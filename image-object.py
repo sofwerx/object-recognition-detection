@@ -187,7 +187,18 @@ with detection_graph.as_default():
 
       # Find object degree of angle, data is sorted by score, select person with highest score
       df5['object_angle'] = df5['x_loc'].apply(lambda x: -(imageWidthCenter - x) * pixelDegree)
+
+#       try:
+#             df6 = df5.loc[df5['classes'] == 1]
+
+#       except Exception:
+
+#             pass
       df6 = df5.loc[df5['classes'] == 1]
+
+      if (df6.empty) or (df6.iloc[0]['scores'] < 0.20) :
+
+          continue
 
       df7 = df6.iloc[0]['object_angle']
 
