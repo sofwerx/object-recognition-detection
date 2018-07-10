@@ -18,7 +18,7 @@ config.gpu_options.allow_growth = True
 session = tf.Session(config=config)
 
 import cv2
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture('videoplay.mp4')
 
 width = cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)   # float
 height = cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)
@@ -122,11 +122,19 @@ TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(
 IMAGE_SIZE = (12, 8)
 
 
+count = 0
+# success = True
+# while success:
+#   success,image = vidcap.read()
+#   cv2.imwrite("frame%d.jpg" % count, image)     # save frame as JPEG file
+
+
 # In[10]:
 
 with detection_graph.as_default():
   with tf.Session(graph=detection_graph) as sess:
     while True:
+      count += 1
       ret, image_np = cap.read()
       # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
       image_np_expanded = np.expand_dims(image_np, axis=0)
@@ -188,12 +196,6 @@ with detection_graph.as_default():
       # Find object degree of angle, data is sorted by score, select person with highest score
       df5['object_angle'] = df5['x_loc'].apply(lambda x: -(imageWidthCenter - x) * pixelDegree)
 
-#       try:
-#             df6 = df5.loc[df5['classes'] == 1]
-
-#       except Exception:
-
-#             pass
       df6 = df5.loc[df5['classes'] == 1]
 
       if (df6.empty) or (df6.iloc[0]['scores'] < 0.20) :
@@ -221,6 +223,7 @@ with detection_graph.as_default():
 
       cv2.rectangle(image_np, (x,y), (x+w, y+h), (0, 255, 0), 2)
       roi = image_np[y:y+h, x:x+w]
+      cv2.imwrite("save_image/frame%d.jpg" % count, roi)
       print width, height, x,y,w,h
 
 
