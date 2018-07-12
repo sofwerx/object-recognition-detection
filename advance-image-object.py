@@ -221,7 +221,7 @@ while True:
         bigBody1 = w * 3
         bigBody2 = x - (w * 2)
         roi = image_np[y:y + halfBody, x:x + w]
-        cv2.rectangle(image_np, (x,y), (x+w, y+halfBody), (0, 255, 0), 2)
+        #cv2.rectangle(image_np, (x,y), (x+w, y+halfBody), (0, 255, 0), 2)
         #cv2.imwrite('save_image/' + "frame%d.jpg" % count, roi)
         print imageWidth, imageHeight, x, y, w, h, halfBody, df6.iloc[0]['scores']
 
@@ -298,7 +298,7 @@ while True:
         print '********* Session Ended *********'
         font = cv2.FONT_HERSHEY_SIMPLEX
         cv2.putText(frame, gunScore, (10, 200), font, 0.8, (0, 255, 0), 2)
-        cv2.imshow('Main', cv2.resize(roi, (640, 480)))
+        cv2.imshow('Main', frame)
 
         clear_output()
 
