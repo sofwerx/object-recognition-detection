@@ -1,5 +1,5 @@
 #######################################################################
-###############################Packages################################
+############################## Packages ###############################
 #######################################################################
 
 import numpy as np
@@ -117,6 +117,11 @@ while True:
     # count += 1
     ret, image_np = cap.read()
 
+    # Loop Variables
+    wid = []
+    hei = []
+    px  = []
+    py =  []
 
     # with detection_graph.as_default():
     with tf.Session(graph=detection_graph) as sess:
@@ -197,35 +202,44 @@ while True:
             continue
 
 
-        #for i in range(0,4):
+        for i in range(0,4):
 
-        df7 = df6.iloc[0]['object_angle']
+            df7 = df6.iloc[i]['object_angle']
 
-        w = int(df6.iloc[0]['ob_wid_x'])
-        x = int(df6.iloc[0]['x_min_t'])
-        h = int(df6.iloc[0]['ob_hgt_y'])
-        y = int(df6.iloc[0]["y_min_t"])
+            w = int(df6.iloc[i]['ob_wid_x'])
+            x = int(df6.iloc[i]['x_min_t'])
+            h = int(df6.iloc[i]['ob_hgt_y'])
+            y = int(df6.iloc[i]["y_min_t"])
 
-        AOB = df7 + ch
-        AOB_str = str(round(AOB, 4))
-        # print df6.head()
-        # print imageHeight, imageWidth
+            AOB = df7 + ch
+            AOB_str = str(round(AOB, 4))
+            # print df6.head()
+            # print imageHeight, imageWidth
 
-        labelBuffer = int(df6.iloc[0]['y_min_t']) - int(df6.iloc[0]['ob_hgt_y'] * 0.1)
+            labelBuffer = int(df6.iloc[0]['y_min_t']) - int(df6.iloc[0]['ob_hgt_y'] * 0.1)
 
-        # print
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(image_np, AOB_str, (int(df6.iloc[0]['x_min_t']), labelBuffer), font, 0.8, (0, 255, 0), 2)
+            # print
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            #cv2.putText(image_np, AOB_str, (int(df6.iloc[0]['x_min_t']), labelBuffer), font, 0.8, (0, 255, 0), 2)
 
-        halfBody = h / 3
-        bigBody1 = w * 3
-        bigBody2 = x - (w * 2)
-        roi = image_np[y:y + halfBody, x:x + w]
-        #cv2.rectangle(image_np, (x,y), (x+w, y+halfBody), (0, 255, 0), 2)
-        #cv2.imwrite('save_image/' + "frame%d.jpg" % count, roi)
-        print imageWidth, imageHeight, x, y, w, h, halfBody, df6.iloc[0]['scores']
+            halfBody = h / 3
+            bigBody1 = w * 3
+            bigBody2 = x - (w * 2)
+            #roi = image_np[y:y + halfBody, x:x + w]
+            #cv2.rectangle(image_np, (x,y), (x+w, y+halfBody), (0, 255, 0), 2)
+            #cv2.imwrite('save_image/' + "frame%d.jpg" % count, roi)
+            print imageWidth, imageHeight, x, y, w, h, halfBody, df6.iloc[i]['scores']
 
+            wid.append(w)
+            hei.append(h)
+            px.append(x)
+            py.append(y)
+
+
+
+    print wid, hei, px, py
     sess.close()
+
 
     #         cv2.imshow("Presentation Tracker", cv2.resize(roi, (640, 480)))
     #         plt.figure(figsize=IMAGE_SIZE)
@@ -249,66 +263,67 @@ while True:
     # If you would like to know how to make this work on your computer
     # please feel free to comment for request
 
+    for person in range(0,3):
 
-    with tf.Session() as sess2:
-        start_time = timeit.default_timer()
+        with tf.Session() as sess2:
+            start_time = timeit.default_timer()
 
-        # Feed the image_data as input to the graph and get first prediction
-        softmax_tensor = sess2.graph.get_tensor_by_name('final_result:0')
+            # Feed the image_data as input to the graph and get first prediction
+            softmax_tensor = sess2.graph.get_tensor_by_name('final_result:0')
 
-        print 'Took {} seconds to feed data to graph'.format(timeit.default_timer() - start_time)
+            print 'Took {} seconds to feed data to graph'.format(timeit.default_timer() - start_time)
 
-        # while True:
-        #             frame = grabVideoFeed()
+            # while True:
+            #             frame = grabVideoFeed()
 
-        #             if frame is None:
-        #                 raise SystemError('Issue grabbing the frame')
-        roi = image_np[y:y + halfBody, x:x + w]
+            #             if frame is None:
+            #                 raise SystemError('Issue grabbing the frame')
+            halfBody = hei[person] / 3
+            roi = image_np[py[person]:py[person] + halfBody, px[person]:px[person] + wid[person]]
 
-        frame = cv2.resize(roi, (299, 299), interpolation=cv2.INTER_CUBIC)
+            frame = cv2.resize(roi, (299, 299), interpolation=cv2.INTER_CUBIC)
 
-        # adhere to TS graph input structure
-        numpy_frame = np.asarray(frame)
-        numpy_frame = cv2.normalize(numpy_frame.astype('float'), None, -0.5, .5, cv2.NORM_MINMAX)
-        numpy_final = np.expand_dims(numpy_frame, axis=0)
+            # adhere to TS graph input structure
+            numpy_frame = np.asarray(frame)
+            numpy_frame = cv2.normalize(numpy_frame.astype('float'), None, -0.5, .5, cv2.NORM_MINMAX)
+            numpy_final = np.expand_dims(numpy_frame, axis=0)
 
-        start_time = timeit.default_timer()
+            start_time = timeit.default_timer()
 
-        # This takes 2-5 seconds as well
-        predictions = sess2.run(softmax_tensor, {'Mul:0': numpy_final})
-        score = predictions.item(1)
-        gunScore = str(score)
-        # print(predictions.item(1))
+            # This takes 2-5 seconds as well
+            predictions = sess2.run(softmax_tensor, {'Mul:0': numpy_final})
+            score = predictions.item(1)
+            gunScore = str(score)
+            # print(predictions.item(1))
 
 
-        print 'Took {} seconds to perform prediction'.format(timeit.default_timer() - start_time)
+            print 'Took {} seconds to perform prediction'.format(timeit.default_timer() - start_time)
 
-        start_time = timeit.default_timer()
+            start_time = timeit.default_timer()
 
-        # Sort to show labels of first prediction in order of confidence
-        top_k = predictions[0].argsort()[-len(predictions[0]):][::-1]
+            # Sort to show labels of first prediction in order of confidence
+            top_k = predictions[0].argsort()[-len(predictions[0]):][::-1]
 
-        print 'Took {} seconds to sort the predictions'.format(timeit.default_timer() - start_time)
+            print 'Took {} seconds to sort the predictions'.format(timeit.default_timer() - start_time)
 
-        for node_id in top_k:
-            human_string = label_lines[node_id]
-            score = predictions[0][node_id]
-            print('%s (score = %.5f)' % (human_string, score))
+            for node_id in top_k:
+                human_string = label_lines[node_id]
+                score = predictions[0][node_id]
+                print('%s (score = %.5f)' % (human_string, score))
 
-        print '********* Session Ended *********'
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(frame, gunScore, (10, 200), font, 0.8, (0, 255, 0), 2)
-        cv2.imshow('Main', frame)
+            print '********* Session Ended *********'
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(frame, gunScore, (10, 200), font, 0.8, (0, 255, 0), 2)
+            cv2.imshow('Main', frame)
 
-        clear_output()
+            clear_output()
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            sess2.close()
-            break
-    sess2.close()
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                sess2.close()
+                break
+        sess2.close()
 
-# camera.release()
-#         cv2.destroyAllWindows()
+
 
 
 # In[ ]:
