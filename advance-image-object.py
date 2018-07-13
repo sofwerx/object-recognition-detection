@@ -26,6 +26,14 @@ from IPython.display import Image, display, clear_output
 ################ Initialize Functions/Variables #######################
 #######################################################################
 
+# Science Thresholds
+
+person_threshold = 0.40
+person_gun_threshold = 0.70
+
+
+
+
 
 # Intialize Tensorflow session and gpu memory management
 config = tf.ConfigProto()
@@ -111,225 +119,231 @@ def load_image_into_numpy_array(image):
     return np.array(image.getdata()).reshape(
         (im_height, im_width, 3)).astype(np.uint8)
 
+count = 1
 
-count = 0
-while True:
-    # count += 1
+while(True):
+    # Capture frame-by-frame
+    count += 1
     ret, image_np = cap.read()
+    if count%5 == 0:
 
-    # Loop Variables
-    wid = []
-    hei = []
-    px  = []
-    py =  []
+        # Loop Variables
+        wid = []
+        hei = []
+        px  = []
+        py =  []
 
-    # with detection_graph.as_default():
-    with tf.Session(graph=detection_graph) as sess:
-        # while True:
-        # count += 1
-        # ret, image_np = cap.read()
-        # for image_path in TEST_IMAGE_PATHS:
-        count += 1
-        # image = img.open(image_path)
-        # image_np = load_image_into_numpy_array(image)
-        # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-        image_np_expanded = np.expand_dims(image_np, axis=0)
-        image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-        # Each box represents a part of the image where a particular object was detected.
-        boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
-        # Each score represent how level of confidence for each of the objects.
-        # Score is shown on the result image, together with the class label.
-        scores = detection_graph.get_tensor_by_name('detection_scores:0')
-        classes = detection_graph.get_tensor_by_name('detection_classes:0')
-        num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-        # Actual detection.
-        (boxes, scores, classes, num_detections) = sess.run(
-            [boxes, scores, classes, num_detections],
-            feed_dict={image_tensor: image_np_expanded})
-        # Visualization of the results of a detection.
-
-        #       vis_util.visualize_boxes_and_labels_on_image_array(
-        #           image_np,
-        #           np.squeeze(boxes),
-        #           np.squeeze(classes).astype(np.int32),
-        #           np.squeeze(scores),
-        #           category_index,
-        #           use_normalized_coordinates=True,
-        #           line_thickness=8)
-
-        #       plt.figure(figsize=IMAGE_SIZE)
-        #       plt.imshow(image_np)
-
-        # width, height = image_np.size
-        aov = 55
-        ch = 180
-        imageHeight = int(height)
-        imageWidth = int(width)
-        imageHeightCenter = imageHeight / 2
-        imageWidthCenter = imageWidth / 2
-        pixelDegree = float(aov) / imageWidth
-
-        # Convert tensorflow data to pandas data frams
-        # print boxes
-        df = pd.DataFrame(boxes.reshape(300, 4), columns=['y_min', 'x_min', 'y_max', 'x_max'])
-        df1 = pd.DataFrame(classes.reshape(300, 1), columns=['classes'])
-        df2 = pd.DataFrame(scores.reshape(300, 1), columns=['scores'])
-        df5 = pd.concat([df, df1, df2], axis=1)
-
-        # Transform box bound coordinates to pixel coordintate
-
-        df5['y_min_t'] = df5['y_min'].apply(lambda x: x * imageHeight)
-        df5['x_min_t'] = df5['x_min'].apply(lambda x: x * imageWidth)
-        df5['y_max_t'] = df5['y_max'].apply(lambda x: x * imageHeight)
-        df5['x_max_t'] = df5['x_max'].apply(lambda x: x * imageWidth)
-
-        # Create objects pixel location x and y
-        # X
-        df5['ob_wid_x'] = df5['x_max_t'] - df5["x_min_t"]
-        df5['ob_mid_x'] = df5['ob_wid_x'] / 2
-        df5['x_loc'] = df5["x_min_t"] + df5['ob_mid_x']
-        # Y
-        df5['ob_hgt_y'] = df5['y_max_t'] - df5["y_min_t"]
-        df5['ob_mid_y'] = df5['ob_hgt_y'] / 2
-        df5['y_loc'] = df5["y_min_t"] + df5['ob_mid_y']
-
-        # Find object degree of angle, data is sorted by score, select person with highest score
-        df5['object_angle'] = df5['x_loc'].apply(lambda x: -(imageWidthCenter - x) * pixelDegree)
-
-        df6 = df5.loc[df5['classes'] == 1]
-
-        if (df6.empty) or (df6.iloc[0]['scores'] < 0.20):
-            continue
-
-
-        for i in range(0,4):
-
-            df7 = df6.iloc[i]['object_angle']
-
-            w = int(df6.iloc[i]['ob_wid_x'])
-            x = int(df6.iloc[i]['x_min_t'])
-            h = int(df6.iloc[i]['ob_hgt_y'])
-            y = int(df6.iloc[i]["y_min_t"])
-
-            AOB = df7 + ch
-            AOB_str = str(round(AOB, 4))
-            # print df6.head()
-            # print imageHeight, imageWidth
-
-            labelBuffer = int(df6.iloc[0]['y_min_t']) - int(df6.iloc[0]['ob_hgt_y'] * 0.1)
-
-            # print
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            #cv2.putText(image_np, AOB_str, (int(df6.iloc[0]['x_min_t']), labelBuffer), font, 0.8, (0, 255, 0), 2)
-
-            halfBody = h / 3
-            bigBody1 = w * 3
-            bigBody2 = x - (w * 2)
-            #roi = image_np[y:y + halfBody, x:x + w]
-            #cv2.rectangle(image_np, (x,y), (x+w, y+halfBody), (0, 255, 0), 2)
-            #cv2.imwrite('save_image/' + "frame%d.jpg" % count, roi)
-            print imageWidth, imageHeight, x, y, w, h, halfBody, df6.iloc[i]['scores']
-
-            wid.append(w)
-            hei.append(h)
-            px.append(x)
-            py.append(y)
-
-
-
-    print wid, hei, px, py
-    sess.close()
-
-
-    #         cv2.imshow("Presentation Tracker", cv2.resize(roi, (640, 480)))
-    #         plt.figure(figsize=IMAGE_SIZE)
-    #         plt.imshow(roi)
-    #         if cv2.waitKey(25) & 0xFF == ord('q'):
-    #             cv2.destroyAllWindows()
-    #             break
-
-
-
-
-    # coding: utf-8
-
-    # In[2]:
-
-
-
-    # I used this code to perform testing with an airsoftgun ak47 with my computer.
-    # I used this in a docker container that had access to the computer camera.
-    # If you have not used open cv2 before, this code may not work.
-    # If you would like to know how to make this work on your computer
-    # please feel free to comment for request
-
-    for person in range(0,3):
-
-        with tf.Session() as sess2:
-            start_time = timeit.default_timer()
-
-            # Feed the image_data as input to the graph and get first prediction
-            softmax_tensor = sess2.graph.get_tensor_by_name('final_result:0')
-
-            print 'Took {} seconds to feed data to graph'.format(timeit.default_timer() - start_time)
-
+        # with detection_graph.as_default():
+        with tf.Session(graph=detection_graph) as sess:
             # while True:
-            #             frame = grabVideoFeed()
+            # count += 1
+            # ret, image_np = cap.read()
+            # for image_path in TEST_IMAGE_PATHS:
+            count += 1
+            # image = img.open(image_path)
+            # image_np = load_image_into_numpy_array(image)
+            # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+            image_np_expanded = np.expand_dims(image_np, axis=0)
+            image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
+            # Each box represents a part of the image where a particular object was detected.
+            boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
+            # Each score represent how level of confidence for each of the objects.
+            # Score is shown on the result image, together with the class label.
+            scores = detection_graph.get_tensor_by_name('detection_scores:0')
+            classes = detection_graph.get_tensor_by_name('detection_classes:0')
+            num_detections = detection_graph.get_tensor_by_name('num_detections:0')
+            # Actual detection.
+            (boxes, scores, classes, num_detections) = sess.run(
+                [boxes, scores, classes, num_detections],
+                feed_dict={image_tensor: image_np_expanded})
+            # Visualization of the results of a detection.
 
-            #             if frame is None:
-            #                 raise SystemError('Issue grabbing the frame')
-            halfBody = hei[person] / 3
-            roi = image_np[py[person]:py[person] + halfBody, px[person]:px[person] + wid[person]]
+            #       vis_util.visualize_boxes_and_labels_on_image_array(
+            #           image_np,
+            #           np.squeeze(boxes),
+            #           np.squeeze(classes).astype(np.int32),
+            #           np.squeeze(scores),
+            #           category_index,
+            #           use_normalized_coordinates=True,
+            #           line_thickness=8)
 
-            frame = cv2.resize(roi, (299, 299), interpolation=cv2.INTER_CUBIC)
+            #       plt.figure(figsize=IMAGE_SIZE)
+            #       plt.imshow(image_np)
 
-            # adhere to TS graph input structure
-            numpy_frame = np.asarray(frame)
-            numpy_frame = cv2.normalize(numpy_frame.astype('float'), None, -0.5, .5, cv2.NORM_MINMAX)
-            numpy_final = np.expand_dims(numpy_frame, axis=0)
+            # width, height = image_np.size
+            aov = 55
+            ch = 180
+            imageHeight = int(height)
+            imageWidth = int(width)
+            imageHeightCenter = imageHeight / 2
+            imageWidthCenter = imageWidth / 2
+            pixelDegree = float(aov) / imageWidth
 
-            start_time = timeit.default_timer()
+            # Convert tensorflow data to pandas data frams
+            # print boxes
+            df = pd.DataFrame(boxes.reshape(300, 4), columns=['y_min', 'x_min', 'y_max', 'x_max'])
+            df1 = pd.DataFrame(classes.reshape(300, 1), columns=['classes'])
+            df2 = pd.DataFrame(scores.reshape(300, 1), columns=['scores'])
+            df5 = pd.concat([df, df1, df2], axis=1)
 
-            # This takes 2-5 seconds as well
-            predictions = sess2.run(softmax_tensor, {'Mul:0': numpy_final})
-            score = predictions.item(1)
-            gunScore = str(score)
-            # print(predictions.item(1))
+            # Transform box bound coordinates to pixel coordintate
+
+            df5['y_min_t'] = df5['y_min'].apply(lambda x: x * imageHeight)
+            df5['x_min_t'] = df5['x_min'].apply(lambda x: x * imageWidth)
+            df5['y_max_t'] = df5['y_max'].apply(lambda x: x * imageHeight)
+            df5['x_max_t'] = df5['x_max'].apply(lambda x: x * imageWidth)
+
+            # Create objects pixel location x and y
+            # X
+            df5['ob_wid_x'] = df5['x_max_t'] - df5["x_min_t"]
+            df5['ob_mid_x'] = df5['ob_wid_x'] / 2
+            df5['x_loc'] = df5["x_min_t"] + df5['ob_mid_x']
+            # Y
+            df5['ob_hgt_y'] = df5['y_max_t'] - df5["y_min_t"]
+            df5['ob_mid_y'] = df5['ob_hgt_y'] / 2
+            df5['y_loc'] = df5["y_min_t"] + df5['ob_mid_y']
+
+            # Find object degree of angle, data is sorted by score, select person with highest score
+            df5['object_angle'] = df5['x_loc'].apply(lambda x: -(imageWidthCenter - x) * pixelDegree)
+
+            df6 = df5.loc[(df5['classes'] == 1 ) %  (df5['scores'] > person_threshold)]
+            #df6 = df6.loc[df6['scores'] > 0.80]
+
+            if (df6.empty) or (df6.iloc[0]['scores'] < person_threshold):
+                continue
 
 
-            print 'Took {} seconds to perform prediction'.format(timeit.default_timer() - start_time)
+            for i in range(0,len(df6.index)):
 
-            start_time = timeit.default_timer()
+                df7 = df6.iloc[i]['object_angle']
 
-            # Sort to show labels of first prediction in order of confidence
-            top_k = predictions[0].argsort()[-len(predictions[0]):][::-1]
+                w = int(df6.iloc[i]['ob_wid_x'])
+                x = int(df6.iloc[i]['x_min_t'])
+                h = int(df6.iloc[i]['ob_hgt_y'])
+                y = int(df6.iloc[i]["y_min_t"])
 
-            print 'Took {} seconds to sort the predictions'.format(timeit.default_timer() - start_time)
+                AOB = df7 + ch
+                AOB_str = str(round(AOB, 4))
+                # print df6.head()
+                # print imageHeight, imageWidth
 
-            for node_id in top_k:
-                human_string = label_lines[node_id]
-                score = predictions[0][node_id]
-                print('%s (score = %.5f)' % (human_string, score))
+                labelBuffer = int(df6.iloc[0]['y_min_t']) - int(df6.iloc[0]['ob_hgt_y'] * 0.1)
 
-            print '********* Session Ended *********'
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(frame, gunScore, (10, 200), font, 0.8, (0, 255, 0), 2)
-            cv2.imshow('Main', frame)
+                # print
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                #cv2.putText(image_np, AOB_str, (int(df6.iloc[0]['x_min_t']), labelBuffer), font, 0.8, (0, 255, 0), 2)
 
-            clear_output()
+                halfBody = h / 3
+                bigBody1 = w * 3
+                bigBody2 = x - (w * 2)
+                #roi = image_np[y:y + halfBody, x:x + w]
+                #cv2.rectangle(image_np, (x,y), (x+w, y+halfBody), (0, 255, 0), 2)
+                #cv2.imwrite('save_image/' + "frame%d.jpg" % count, roi)
+                print imageWidth, imageHeight, x, y, w, h, halfBody, df6.iloc[i]['scores']
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+                wid.append(w)
+                hei.append(h)
+                px.append(x)
+                py.append(y)
+
+
+
+        print wid, hei, px, py
+        sess.close()
+
+
+        #         cv2.imshow("Presentation Tracker", cv2.resize(roi, (640, 480)))
+        #         plt.figure(figsize=IMAGE_SIZE)
+        #         plt.imshow(roi)
+        #         if cv2.waitKey(25) & 0xFF == ord('q'):
+        #             cv2.destroyAllWindows()
+        #             break
+
+
+
+
+        # coding: utf-8
+
+        # In[2]:
+
+
+
+        # I used this code to perform testing with an airsoftgun ak47 with my computer.
+        # I used this in a docker container that had access to the computer camera.
+        # If you have not used open cv2 before, this code may not work.
+        # If you would like to know how to make this work on your computer
+        # please feel free to comment for request
+
+        for person in range(0,5):
+
+            with tf.Session() as sess2:
+                start_time = timeit.default_timer()
+
+                # Feed the image_data as input to the graph and get first prediction
+                softmax_tensor = sess2.graph.get_tensor_by_name('final_result:0')
+
+                print 'Took {} seconds to feed data to graph'.format(timeit.default_timer() - start_time)
+
+                # while True:
+                #             frame = grabVideoFeed()
+
+                #             if frame is None:
+                #                 raise SystemError('Issue grabbing the frame')
+                halfBody = hei[person] / 3
+                roi = image_np[py[person]:py[person] + halfBody, px[person]:px[person] + wid[person]]
+
+                frame = cv2.resize(roi, (299, 299), interpolation=cv2.INTER_CUBIC)
+
+                # adhere to TS graph input structure
+                numpy_frame = np.asarray(frame)
+                numpy_frame = cv2.normalize(numpy_frame.astype('float'), None, -0.5, .5, cv2.NORM_MINMAX)
+                numpy_final = np.expand_dims(numpy_frame, axis=0)
+
+                start_time = timeit.default_timer()
+
+                # This takes 2-5 seconds as well
+                predictions = sess2.run(softmax_tensor, {'Mul:0': numpy_final})
+                score = predictions.item(1)
+                gunScore = str(score)
+                # print(predictions.item(1))
+
+
+                print 'Took {} seconds to perform prediction'.format(timeit.default_timer() - start_time)
+
+                start_time = timeit.default_timer()
+
+                # Sort to show labels of first prediction in order of confidence
+                top_k = predictions[0].argsort()[-len(predictions[0]):][::-1]
+
+                print 'Took {} seconds to sort the predictions'.format(timeit.default_timer() - start_time)
+
+    #             for node_id in top_k:
+    #                 human_string = label_lines[node_id]
+    #                 score = predictions[0][node_id]
+    #                 print('%s (score = %.5f)' % (human_string, score))
+
+
+                print '********* Session Ended *********'
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                #cv2.rectangle(image_np, (px[person],py[person]), (px[person]+wid[person], py[person]+hei[person]), (0, 0, 255), 2)
+                cv2.rectangle(image_np, (px[person],py[person]), (px[person]+wid[person], py[person]+hei[person]), (0, 255, 0), 2)
+
+                if score > person_gun_threshold:
+                    cv2.rectangle(image_np, (px[person],py[person]), (px[person]+wid[person], py[person]+hei[person]), (0, 0, 255), 2)
+                #cv2.putText(frame, gunScore, (10, 200), font, 0.8, (0, 255, 0), 2)
                 sess2.close()
-                break
-        sess2.close()
 
+          #cv2.imshow('Main', image_np)
 
+    #             clear_output()
 
+    #             if cv2.waitKey(1) & 0xFF == ord('q'):
+    #                 sess2.close()
+    #                 break
+            #sess2.close()
 
-# In[ ]:
+        # Display the resulting frame
+        cv2.imshow('frame',cv2.resize(image_np, (1024, 768)))
 
-
-
-
-
-# In[ ]:
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
