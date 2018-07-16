@@ -28,11 +28,8 @@ from IPython.display import Image, display, clear_output
 
 # Science Thresholds
 
-person_threshold = 0.40
-person_gun_threshold = 0.70
-
-
-
+person_threshold = 0.50
+person_gun_threshold = 0.80
 
 
 # Intialize Tensorflow session and gpu memory management
@@ -120,6 +117,7 @@ def load_image_into_numpy_array(image):
         (im_height, im_width, 3)).astype(np.uint8)
 
 count = 1
+person_count = 1
 
 while(True):
     # Capture frame-by-frame
@@ -156,21 +154,16 @@ while(True):
             (boxes, scores, classes, num_detections) = sess.run(
                 [boxes, scores, classes, num_detections],
                 feed_dict={image_tensor: image_np_expanded})
-            # Visualization of the results of a detection.
+#             vis_util.visualize_boxes_and_labels_on_image_array(
+#               image_np,
+#               np.squeeze(boxes),
+#               np.squeeze(classes).astype(np.int32),
+#               np.squeeze(scores),
+#               category_index,
+#               use_normalized_coordinates=True,
+#               line_thickness=8)
 
-            #       vis_util.visualize_boxes_and_labels_on_image_array(
-            #           image_np,
-            #           np.squeeze(boxes),
-            #           np.squeeze(classes).astype(np.int32),
-            #           np.squeeze(scores),
-            #           category_index,
-            #           use_normalized_coordinates=True,
-            #           line_thickness=8)
 
-            #       plt.figure(figsize=IMAGE_SIZE)
-            #       plt.imshow(image_np)
-
-            # width, height = image_np.size
             aov = 55
             ch = 180
             imageHeight = int(height)
@@ -227,7 +220,7 @@ while(True):
                 # print df6.head()
                 # print imageHeight, imageWidth
 
-                labelBuffer = int(df6.iloc[0]['y_min_t']) - int(df6.iloc[0]['ob_hgt_y'] * 0.1)
+                #labelBuffer = int(df6.iloc[0]['y_min_t']) - int(df6.iloc[0]['ob_hgt_y'] * 0.1)
 
                 # print
                 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -239,12 +232,14 @@ while(True):
                 #roi = image_np[y:y + halfBody, x:x + w]
                 #cv2.rectangle(image_np, (x,y), (x+w, y+halfBody), (0, 255, 0), 2)
                 #cv2.imwrite('save_image/' + "frame%d.jpg" % count, roi)
+
                 print imageWidth, imageHeight, x, y, w, h, halfBody, df6.iloc[i]['scores']
 
                 wid.append(w)
                 hei.append(h)
                 px.append(x)
                 py.append(y)
+                print boxes
 
 
 
@@ -267,12 +262,6 @@ while(True):
         # In[2]:
 
 
-
-        # I used this code to perform testing with an airsoftgun ak47 with my computer.
-        # I used this in a docker container that had access to the computer camera.
-        # If you have not used open cv2 before, this code may not work.
-        # If you would like to know how to make this work on your computer
-        # please feel free to comment for request
 
         for person in range(0,5):
 
@@ -317,30 +306,25 @@ while(True):
 
                 print 'Took {} seconds to sort the predictions'.format(timeit.default_timer() - start_time)
 
-    #             for node_id in top_k:
-    #                 human_string = label_lines[node_id]
-    #                 score = predictions[0][node_id]
-    #                 print('%s (score = %.5f)' % (human_string, score))
 
 
                 print '********* Session Ended *********'
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 #cv2.rectangle(image_np, (px[person],py[person]), (px[person]+wid[person], py[person]+hei[person]), (0, 0, 255), 2)
-                cv2.rectangle(image_np, (px[person],py[person]), (px[person]+wid[person], py[person]+hei[person]), (0, 255, 0), 2)
+                #cv2.rectangle(image_np, (px[person],py[person]), (px[person]+wid[person], py[person]+hei[person]), (0, 255, 0), 2)
 
                 if score > person_gun_threshold:
-                    cv2.rectangle(image_np, (px[person],py[person]), (px[person]+wid[person], py[person]+hei[person]), (0, 0, 255), 2)
+                    person_count += 1
+                    cv2.rectangle(image_np, (px[person],py[person]), (px[person]+wid[person], py[person]+hei[person]), (0, 0, 255), 10)
+                    labelBuffer = int(py[person]) - int(hei[person] * 0.1)
+
+                    # print
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    cv2.putText(image_np, gunScore, (int(px[person]), labelBuffer), font, 0.8, (0, 255, 0), 2)
+
+                    cv2.imwrite('save_image/' + "frame%d.jpg" % person_count, image_np)
                 #cv2.putText(frame, gunScore, (10, 200), font, 0.8, (0, 255, 0), 2)
                 sess2.close()
-
-          #cv2.imshow('Main', image_np)
-
-    #             clear_output()
-
-    #             if cv2.waitKey(1) & 0xFF == ord('q'):
-    #                 sess2.close()
-    #                 break
-            #sess2.close()
 
         # Display the resulting frame
         cv2.imshow('frame',cv2.resize(image_np, (1024, 768)))
